@@ -2,7 +2,7 @@
 
 # ***** BEGIN GPL LICENSE BLOCK *****
 #
-# Script copyright (C): DarkRain, Werner Höhrer
+# Script copyright (C): DarkRain, Werner HÃ¶hrer
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
