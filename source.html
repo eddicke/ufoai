@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+<head><style type="text/css">*{
+    margin: 0;
+    padding: 0;
+}
+body {
+    overflow: hidden;
+    background: #fb3550;
+}
+
+#container {
+    position: relative;
+}
+#button {
+				color: #ffffff;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}</style>
+</head><body>
+    <div id="container"><canvas width="1299" height="2118" style="width: 433px; height: 706px;"></canvas></div>
+
+    <script src="https://rawgit.com/mrdoob/three.js/dev/build/three.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/Detector.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/libs/stats.min.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/controls/OrbitControls.js"></script>
+    
+
+<button id="button"> change player</button>
+
+
+<script>   
+    var w = window.innerWidth,
+        h = window.innerHeight;
+
+    var container, renderer, scene, camera, controls, icosahedron, cylinder,cylinder2, clock, obstacles, light, texture, mesh;
+var SHADOW_MAP_WIDTH = 2048, SHADOW_MAP_HEIGHT = 1024;
+			var HUD_MARGIN = 0.05;
+			var SCREEN_WIDTH = window.innerWidth;
+			var SCREEN_HEIGHT = window.innerHeight;
+			var FLOOR = - 250;
+			var camera, controls, scene, renderer;
+var mergedGeometry = new THREE.Geometry();
+			var container, stats;
+			var NEAR = 10, FAR = 3000;
+			var mixer, morphs = [];
+			var light;
+			var lightShadowMapViewer;
+			var clock = new THREE.Clock();
+			var showHUD = false;
+var colliderList = [];
+    var newCollider = [];
+    var flr = [];
+var obst = []
+ //var mouse = {x: 0, y: 0};
+    var raycaster = new THREE.Raycaster();
+		var mouse = new THREE.Vector2(),
+    INTERSECTED;
+init();
+animate();
+function init() {
+        // renderer
+    
+        renderer = new THREE.WebGLRenderer({
+            antialias: true
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(w, h);
+     renderer.shadowMapEnabled = true;
+                renderer.shadowMapSoft = true;
+        container = document.getElementById('container');
+        container.appendChild(renderer.domElement);
+    
+clock = new THREE.Clock();
+        // world
+        scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x1E2630, 0.002);
+        renderer.setClearColor(scene.fog.color);
+
+        // camera
+        camera = new THREE.PerspectiveCamera(60, w / h, 1, 2000);
+        camera.position.x = 200;
+        camera.position.y = 150;
+        camera.position.z = 300;
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        // helpers
+      
+       
+        // lights
+       scene.fog = new THREE.Fog( 0x000000, 0, 500 );
+
+                var ambient = new THREE.AmbientLight( 0x444444 );
+				scene.add( ambient );
+				light = new THREE.SpotLight( 0xffffff, 1, 0, Math.PI / 2 );
+				light.position.set( 0, 1500, 1000 );
+				light.target.position.set( 0, 0, 0 );
+				light.castShadow = true;
+				light.shadow = new THREE.LightShadow( new THREE.PerspectiveCamera( 50, 1, 1200, 2500 ) );
+				light.shadow.bias = 0.0001;
+				light.shadow.mapSize.width = SHADOW_MAP_WIDTH;
+				light.shadow.mapSize.height = SHADOW_MAP_HEIGHT;
+				scene.add( light );
+
+
+        var material = new THREE.MeshPhongMaterial({
+            color: 0xfb3550,
+            shading: THREE.FlatShading
+        });
+        // Dome
+        geometry = new THREE.IcosahedronGeometry(700, 1);
+        var domeMaterial = new THREE.MeshPhongMaterial({
+            color: 0xfb3550,
+            shading: THREE.FlatShading,
+            side: THREE.BackSide
+        });
+        var dome = new THREE.Mesh(geometry, domeMaterial);
+        scene.add(dome);
+        newCollider.push(dome);
+        var geometry = new THREE.PlaneGeometry (50, 50, 50);
+
+    for (var i = 0; i < 1; i++) {
+
+        var object = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
+            color: Math.random() * 0xffffff
+        }));
+
+        object.position.x = Math.random() * 800 - 400;
+        object.position.y = Math.random() * 800 - 400;
+        object.position.z = Math.random() * 800 - 400;
+
+        object.rotation.x = Math.random() * 2 * Math.PI;
+        object.rotation.y = Math.random() * 2 * Math.PI;
+        object.rotation.z = Math.random() * 2 * Math.PI;
+
+        object.scale.x = Math.random() + 0.5;
+        object.scale.y = Math.random() + 0.5;
+        object.scale.z = Math.random() + 0.5;
+
+        scene.add(object);
+
+    }
+
+        //cone
+        var geometry = new THREE.CylinderGeometry(0, 10, 60, 8);
+        geometry.rotateX(Math.PI / 2);
+                cylinder = new THREE.Mesh(geometry, material.clone());
+                cylinder.position.set(-90, 70, 30);
+                cylinder.up.set(0, 0, 1);
+                scene.add(cylinder);
+     //   newCollider.push(cylinder);
+    var geomet = new THREE.CylinderGeometry(0, 10, 60, 8);
+        geomet.rotateX(Math.PI / 2);
+            cylinder2 = new THREE.Mesh(geomet, material);
+            cylinder2.position.set(-90, 70, 30);
+            cylinder2.up.set(0, 0, 1);
+            scene.add(cylinder2);
+
+        camera.lookAt(cylinder.position);
+    //lets morph the enemy ratta
+     var loader = new THREE.JSONLoader();
+    loader.load('https://raw.githubusercontent.com/eddicke/Physijs/master/ratamahatta.js', function(geometry, materials) {
+     texture = new THREE.TextureLoader().load( 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/crate.gif' );
+      var material = materials[ 0 ];
+     // material.map = texture
+					material.morphTargets = true;
+					material.color.setHex( 0xffaaaa );
+        mesh = new THREE.MorphBlendMesh(geometry, material);
+        mesh.scale.x = mesh.scale.y = mesh.scale.z = 2;
+        mesh.translation = THREE.GeometryUtils.center(geometry);
+        mesh.position.y = 50;
+     var play = mesh.createAnimation ("gallop", 39, 45, 0.9)
+       var play2 = mesh.createAnimation ("play2", 0, 100, 0.9)
+          mesh.playAnimation('gallop')
+    //  mesh.rotation.y = Math.PI
+      
+        scene.add(mesh);
+    });
+     //lets morph the enemy young mula
+  	var loader = new THREE.JSONLoader();
+				loader.load( "https://cdn.rawgit.com/mrdoob/three.js/master/examples/models/animated/horse.js", function ( geometry ) {
+					var material = new THREE.MeshLambertMaterial( {
+						vertexColors: THREE.FaceColors,
+						morphTargets: true,
+						overdraw: 0.5,
+shading: THREE.SmoothShading
+					} );
+					monster = new THREE.MorphBlendMesh( geometry, material );
+					monster.scale.set( 0.5, 0.5, 0.5 );
+          //monster.rotation.y = 460
+          monster.position.x = 60
+					scene.add( monster );
+              monster.castShadow = true;
+      monster.receiveShadow = true;
+         var play = monster.createAnimation ("gallop", 0, 10, 2)
+          monster.playAnimation ("gallop")
+			//monster.rotation.y = Math.PI*3/2
+                       
+				} );
+// ground
+    texture = new THREE.TextureLoader().load( 'https://cdn.rawgit.com/mrdoob/three.js/master/examples/textures/hardwood2_diffuse.jpg' );
+    var texture2 = THREE.ImageUtils.loadTexture('https://cdn.rawgit.com/mrdoob/three.js/master/examples/textures/hardwood2_diffuse.jpg');
+var groundMaterial = new THREE.MeshPhongMaterial({
+    ambient: 0x808080,
+    map: texture2,
+    specular: 0xFFFFFF
+   
+})
+      var geometrix = new THREE.PlaneGeometry(1000, 1000);
+  var materiax = new THREE.MeshBasicMaterial({
+    color: 0x444444,
+    side: THREE.DoubleSide 
+  });
+  var ground = new THREE.Mesh(geometrix, materiax);
+  ground.rotation.x = Math.PI / 2;
+  ground.position.set(15, 0, 15);
+    
+scene.add(ground);
+   
+
+        //Dodecahedron
+    
+        var geometry2 = new THREE.IcosahedronGeometry(40, 1);
+        icosahedron = new THREE.Mesh(geometry2, material.clone());
+        scene.add(icosahedron);
+icosahedron.visible = false;
+    //icosahedron.scale.set(0.1, 0.1, 0.1)
+   // colliderList.push(icosahedron);
+     var obstaclesMaterial = new THREE.MeshPhongMaterial({
+            color: 'green',
+            shading: THREE.FlatShading
+        });
+        var obstaclesMaterial2 = new THREE.MeshPhongMaterial({
+            color: 'red',
+            shading: THREE.FlatShading
+        });
+    
+    for(var i = 0; i<10; i++){
+        
+        //mergedGeometry
+        obstacles = new THREE.Mesh(geometry2, obstaclesMaterial);
+        obstacles.position.x = Math.random()* 1000-400;
+        obstacles.position.z = Math.random()* 1000-400;
+        obstacles.scale.y = Math.random()*10
+      
+        if(Math.round(Math.random()*5) === 0){
+        obstacles.material = obstaclesMaterial2   
+       } scene.add(obstacles);
+      //obstacles.castShadow = true;
+      obstacles.receiveShadow = true;
+        
+        obst.push(obstacles);
+    }
+ //document.addEventListener('mousedown', onMouseMove, false);
+//document.addEventListener('mousedown', onMousePick, false);
+ document.addEventListener('mousemove', onDocumentMouseMove, false);
+document.addEventListener('mousedown', onMousePick, false);
+    cylinder.position.y = icosahedron.position.y
+    icosahedron.position.x = 200
+   //picking
+    function onMousePick( event ) {
+        	event.preventDefault();
+			mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+	mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+				raycaster.setFromCamera( mouse, camera );
+				//h See if the ray from the camera into the world hits one of our meshes
+				var intersects = raycaster.intersectObject( ground );
+				// Toggle rotation bool for meshes that we clicked
+				if ( intersects.length > 0 ) {
+					icosahedron.position.set( 0, 0, 0 );
+					icosahedron.lookAt( intersects[ 0 ].face.normal );
+					icosahedron.position.copy( intersects[ 0 ].point );
+				}
+}
+
+// Follows the mouse event
+function onMouseMove(event) {
+
+	// Update the mouse variable
+	event.preventDefault();
+	mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+	mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+ // Make the sphere follow the mouse
+  var vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+	vector.unproject( camera );
+	var dir = vector.sub( camera.position ).normalize();
+	var distance = - camera.position.z / dir.z;
+	var pos =camera.position.clone().add( dir.multiplyScalar( distance ) );
+	icosahedron.position.copy(new THREE.Vector3(pos.x, 0, pos.z));
+  
+	};
+
+    colliderList.push(icosahedron);
+          window.addEventListener('resize', onWindowResize, false);
+    }
+    function onWindowResize() {
+        w = window.innerWidth;
+        h = window.innerHeight;
+
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
+    
+    function onDocumentMouseMove(event) {
+
+    event.preventDefault();
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+}
+function createHUD() {
+				lightShadowMapViewer = new THREE.ShadowMapViewer( light );
+				lightShadowMapViewer.position.x = 10;
+				lightShadowMapViewer.position.y = SCREEN_HEIGHT - ( SHADOW_MAP_HEIGHT / 4 ) - 10;
+				lightShadowMapViewer.size.width = SHADOW_MAP_WIDTH / 4;
+				lightShadowMapViewer.size.height = SHADOW_MAP_HEIGHT / 4;
+				lightShadowMapViewer.update();
+			}
+
+    
+    function animate(){
+        requestAnimationFrame(animate);
+        render();
+    }
+//collision
+   
+    
+   
+ var velocity = 0.5;
+    function render() {
+       //velocity = 0.5;
+         var delta = clock.getDelta();
+  if(mesh){
+      mesh.update( delta * 10 );
+      mesh.rotation.y = Math.atan2( ( icosahedron.position.x - mesh.position.x ), ( icosahedron.position.z - mesh.position.z ));
+        
+         mesh.translateOnAxis(new THREE.Vector3(0, 0, 0.2), 2);
+  }
+       if(monster){
+            light.position = monster.position;
+          monster.update( delta * 10 );
+            //collsion
+         monster.rotation.y = Math.atan2( ( icosahedron.position.x - monster.position.x ), ( icosahedron.position.z - monster.position.z ));
+        
+         monster.translateOnAxis(new THREE.Vector3(0, 0, velocity), 2);
+       }
+       
+        
+       
+//******collision\\\\\
+	var originPoint = monster.position.clone();
+
+	
+	for (var vertexIndex = 0; vertexIndex < monster.geometry.vertices.length; vertexIndex++)
+	{		
+		var localVertex = monster.geometry.vertices[vertexIndex].clone();
+		var globalVertex = localVertex.applyMatrix4( monster.matrix );
+		var directionVector = globalVertex.sub( monster.position );
+		
+		var ray = new THREE.Raycaster( originPoint, directionVector.clone().normalize() );
+		var collisionResults = ray.intersectObject( icosahedron );
+		if ( collisionResults.length > 0 && collisionResults[0].distance < directionVector.length() ) {
+            
+            velocity = 0;
+           //console.log("phew");
+           
+        }
+       
+       else{
+           velocity = 1.5
+         
+           //console.log()
+           
+       }
+    ///check for obstcles
+        
+        var obstacleResults = ray.intersectObjects( obst );
+        if ( obstacleResults.length > 0 && obstacleResults[0].distance < directionVector.length() ) {
+             velocity = 0;
+            if(obstacleResults[0].object.scale.y < 5){
+        monster.position.y = obstacleResults[0].point.y + 4;
+        }
+            else{
+                 
+                 monster.position.x = obstacleResults[0].point.x / 10;
+            }
+      }
+        else{
+            velocity = 1.5;
+            setTimeout(function(){            monster.position.y = 0
+                                 }, 5000);
+        }
+        //chase-camera
+        var relativeCameraOffset = new THREE.Vector3(0,600,100);
+
+	var cameraOffset = relativeCameraOffset.applyMatrix4( monster.matrixWorld );
+
+	/*camera.position.x = monster.position.x
+	camera.position.y = monster.position.y + 160;
+	camera.position.z = monster.position.z;
+	camera.lookAt( monster.position );*/
+	}	
+
+   
+        renderer.render(scene, camera);
+    }
+    
+    
+</script></body>
